@@ -1,4 +1,3 @@
-cat > /srv/docker/scripts/prechange.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -57,6 +56,3 @@ backup_path "/srv/docker/ha/config"
 
 echo "Created snapshot: ${TAG}"
 echo "Backups stored in: ${BACKUP_DIR}"
-EOF
-
-chmod +x /srv/docker/scripts/prechange.sh
