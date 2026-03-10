@@ -10,28 +10,6 @@ mkdir -p "${BACKUP_DIR}"
 
 cd /srv/docker
 
-git add .
-git commit -m "checkpoint before ${NAME}" || true
-git tag -a "${TAG}" -m "Pre-change snapshot: ${NAME}"
-
-tar -czf "${BACKUP_DIR}/compose-and-config.tar.gz" \
-  --exclude='./backups' \
-  --exclude='./*/data' \
-  --exclude='./*/work' \
-  --exclude='./*/conf' \
-cat > /srv/docker/scripts/prechange.sh <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-NAME="${1:-manual}"
-STAMP="$(date +%Y%m%d-%H%M%S)"
-TAG="pre-${STAMP}-${NAME}"
-BACKUP_DIR="/srv/docker/backups/${TAG}"
-
-mkdir -p "${BACKUP_DIR}"
-
-cd /srv/docker
-
 # Commit only already-tracked changes if there are any
 if ! git diff --quiet || ! git diff --cached --quiet; then
   git commit -am "checkpoint before ${NAME}" || true
@@ -42,6 +20,7 @@ if git rev-parse --verify HEAD >/dev/null 2>&1; then
   git tag -a "${TAG}" -m "Pre-change snapshot: ${NAME}"
 fi
 
+# Backup repo files, excluding runtime data and git metadata
 tar -czf "${BACKUP_DIR}/repo-files.tar.gz" \
   --exclude='./.git' \
   --exclude='./backups' \
@@ -56,24 +35,24 @@ tar -czf "${BACKUP_DIR}/repo-files.tar.gz" \
   --exclude='./reverse-proxy/caddy/config' \
   .
 
-for path in \
-  /srv/docker/adguard/work \
-  /srv/docker/adguard/conf \
-  /srv/docker/reverse-proxy/caddy/data \
-  /srv/docker/reverse-proxy/caddy/config \
-  /srv/docker/portainer/data \
-  /srv/docker/homepage/data \
-  /srv/docker/n8n/data \
-  /srv/docker/ha/config
-do
+backup_path() {
+  local path="$1"
+  local rel="${path#/srv/docker/}"
+  local name="${rel//\//_}"
+
   if [ -e "$path" ]; then
-    base="$(echo "$path" | sed 's#^/srv/docker/##; s#/#_#g')"
-    tar -czf "${BACKUP_DIR}/${base}.tar.gz" -C / "$(echo "$path" | sed 's#^/##')"
+    tar -czf "${BACKUP_DIR}/${name}.tar.gz" -C "/srv/docker" "$rel"
   fi
-done
+}
+
+backup_path "/srv/docker/adguard/work"
+backup_path "/srv/docker/adguard/conf"
+backup_path "/srv/docker/reverse-proxy/caddy/data"
+backup_path "/srv/docker/reverse-proxy/caddy/config"
+backup_path "/srv/docker/portainer/data"
+backup_path "/srv/docker/homepage/data"
+backup_path "/srv/docker/n8n/data"
+backup_path "/srv/docker/ha/config"
 
 echo "Created snapshot: ${TAG}"
 echo "Backups stored in: ${BACKUP_DIR}"
-EOF
-
-chmod +x /srv/docker/scripts/prechange.sh
