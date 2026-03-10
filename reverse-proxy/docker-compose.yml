@@ -11,13 +11,10 @@ services:
       - ./caddy/data:/data
       - ./caddy/config:/config
     networks:
-      - proxy
       - homelab
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
 networks:
-  proxy:
-    external: true
   homelab:
     external: true
