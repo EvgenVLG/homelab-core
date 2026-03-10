@@ -23,5 +23,6 @@ ha.home.arpa {
 }
 
 adguard.home.arpa {
-  reverse_proxy 192.168.50.59:3001
+  reverse_proxy adguard:3000
+  tls internal
 }
