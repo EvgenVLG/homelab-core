@@ -19,6 +19,41 @@ tar -czf "${BACKUP_DIR}/compose-and-config.tar.gz" \
   --exclude='./*/data' \
   --exclude='./*/work' \
   --exclude='./*/conf' \
+cat > /srv/docker/scripts/prechange.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+NAME="${1:-manual}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+TAG="pre-${STAMP}-${NAME}"
+BACKUP_DIR="/srv/docker/backups/${TAG}"
+
+mkdir -p "${BACKUP_DIR}"
+
+cd /srv/docker
+
+# Commit only already-tracked changes if there are any
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  git commit -am "checkpoint before ${NAME}" || true
+fi
+
+# Create tag only if repository has at least one commit
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  git tag -a "${TAG}" -m "Pre-change snapshot: ${NAME}"
+fi
+
+tar -czf "${BACKUP_DIR}/repo-files.tar.gz" \
+  --exclude='./.git' \
+  --exclude='./backups' \
+  --exclude='./adguard/work' \
+  --exclude='./adguard/conf' \
+  --exclude='./ha/config' \
+  --exclude='./homepage/data' \
+  --exclude='./homepage/config' \
+  --exclude='./n8n/data' \
+  --exclude='./portainer/data' \
+  --exclude='./reverse-proxy/caddy/data' \
+  --exclude='./reverse-proxy/caddy/config' \
   .
 
 for path in \
@@ -37,5 +72,8 @@ do
   fi
 done
 
-echo "Created tag: ${TAG}"
+echo "Created snapshot: ${TAG}"
 echo "Backups stored in: ${BACKUP_DIR}"
+EOF
+
+chmod +x /srv/docker/scripts/prechange.sh
