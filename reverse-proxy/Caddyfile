@@ -1,0 +1,27 @@
+
+home.home.arpa {
+	basicauth {
+	  evgen $2a$14$eAc0orHM44g8qu26TjriAuCqV47Y4tRtfelAATEJWMUEhkPMOmMy.
+	}
+	reverse_proxy homepage:3000
+	tls internal
+}
+
+portainer.home.arpa {
+	reverse_proxy portainer:9000
+	tls internal
+}
+
+n8n.home.arpa {
+	reverse_proxy n8n:5678
+	tls internal
+}
+
+ha.home.arpa {
+  reverse_proxy 192.168.50.59:8123
+  tls internal
+}
+
+adguard.home.arpa {
+  reverse_proxy 192.168.50.59:3001
+}

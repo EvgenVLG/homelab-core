@@ -1,0 +1,15 @@
+name: ha
+
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+
+    environment:
+      - TZ=America/New_York
+
+    volumes:
+      - ./config:/config

@@ -1,0 +1,15 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=home.home.arpa
+    volumes:
+      - ./data:/app/config
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true

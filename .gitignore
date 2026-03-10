@@ -1,0 +1,22 @@
+# backups and local metadata
+backups/
+docs/audit/
+.env
+*.log
+
+# runtime/container data
+adguard/work/
+adguard/conf/
+ha/config/
+homepage/data/
+homepage/config/
+n8n/data/
+portainer/data/
+reverse-proxy/caddy/data/
+reverse-proxy/caddy/config/
+
+# common recursive fallbacks
+**/data/
+**/work/
+**/conf/
+**/*.log
