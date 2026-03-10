@@ -1,3 +1,4 @@
+cat > /srv/docker/scripts/prechange.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -20,7 +21,7 @@ if git rev-parse --verify HEAD >/dev/null 2>&1; then
   git tag -a "${TAG}" -m "Pre-change snapshot: ${NAME}"
 fi
 
-# Backup repo files, excluding runtime data and git metadata
+# Backup repo files only
 tar -czf "${BACKUP_DIR}/repo-files.tar.gz" \
   --exclude='./.git' \
   --exclude='./backups' \
@@ -41,7 +42,7 @@ backup_path() {
   local name="${rel//\//_}"
 
   if [ -e "$path" ]; then
-    tar -czf "${BACKUP_DIR}/${name}.tar.gz" -C "/srv/docker" "$rel"
+    sudo tar -czf "${BACKUP_DIR}/${name}.tar.gz" -C "/srv/docker" "$rel"
   fi
 }
 
@@ -56,3 +57,6 @@ backup_path "/srv/docker/ha/config"
 
 echo "Created snapshot: ${TAG}"
 echo "Backups stored in: ${BACKUP_DIR}"
+EOF
+
+chmod +x /srv/docker/scripts/prechange.sh
