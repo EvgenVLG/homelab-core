@@ -1,37 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== $(date) ==="
+echo "=== $(TZ=America/New_York date '+%Y-%m-%d %H:%M:%S %Z') ==="
+
 echo
 
-echo "[docker ps]"
-docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+echo "[containers]"
+docker ps --format '{{.Names}} {{.Status}}'
 echo
 
-echo "[http checks]"
-for url in \
-  https://home.home.arpa \
-  https://portainer.home.arpa \
-  https://n8n.home.arpa \
-  https://adguard.home.arpa
-do
-  code=$(curl -k -s -o /dev/null -w "%{http_code}" "$url" || true)
-  echo "$url -> $code"
-done
+check_http() {
+  url=$1
+  expected=$2
+  code=$(curl -k -s -o /dev/null -w "%{http_code}" "$url" || echo "000")
+
+  if [[ "$code" == "$expected" ]]; then
+    echo "$url -> OK ($code)"
+  else
+    echo "$url -> FAIL ($code expected $expected)"
+  fi
+}
+
+echo "[http]"
+
+check_http https://home.home.arpa 401
+check_http https://portainer.home.arpa 200
+check_http https://n8n.home.arpa 200
+check_http https://adguard.home.arpa 302
+
 echo
 
-echo "[dns checks]"
-getent hosts home.home.arpa || true
-getent hosts adguard.home.arpa || true
+echo "[dns]"
+getent hosts home.home.arpa
+getent hosts adguard.home.arpa
 echo
 
 echo "[disk]"
 df -h /
 echo
 
-echo "[recent caddy log]"
-docker logs --tail 5 caddy 2>/dev/null || true
+echo "[docker errors]"
+docker ps --filter "status=exited"
 echo
-
-echo "[recent adguard log]"
-docker logs --tail 5 adguard 2>/dev/null || true
