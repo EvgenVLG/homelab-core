@@ -1,0 +1,16 @@
+---
+title: Homelab
+headerStyle: clean
+target: _self
+
+
+layout:
+  Core Services:
+    style: row
+    columns: 3
+  Infrastructure:
+    style: row
+    columns: 2
+  Server Info:
+    style: row
+    columns: 3

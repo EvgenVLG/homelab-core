@@ -1,0 +1,17 @@
+---
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+
+- search:
+    provider: duckduckgo
+    target: _blank
+
+- openmeteo:
+    label: New Market
+    latitude: 39.3865
+    longitude: -77.2761
+    timezone: America/New_York
+    units: imperial
+    cache: 5

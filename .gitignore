@@ -1,22 +1,31 @@
-# backups and local metadata
 backups/
-docs/audit/
+docs/*.txt
 .env
 *.log
 
-# runtime/container data
 adguard/work/
 adguard/conf/
 ha/config/
-homepage/data/
-homepage/config/
 n8n/data/
 portainer/data/
 reverse-proxy/caddy/data/
 reverse-proxy/caddy/config/
 
-# common recursive fallbacks
+# ignore generic runtime data by default
 **/data/
 **/work/
 **/conf/
 **/*.log
+
+# but keep Homepage config in git
+!homepage/data/
+!homepage/data/services.yaml
+!homepage/data/settings.yaml
+!homepage/data/widgets.yaml
+!homepage/data/bookmarks.yaml
+!homepage/data/docker.yaml
+!homepage/data/custom.css
+!homepage/data/custom.js
+
+# still ignore Homepage runtime logs
+homepage/data/logs/
