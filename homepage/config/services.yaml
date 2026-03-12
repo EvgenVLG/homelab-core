@@ -1,0 +1,7 @@
+- Management:
+    - Portainer:
+        href: https://portainer.home.arpa
+        description: Docker UI
+    - n8n:
+        href: https://n8n.home.arpa
+        description: Automation workflows
