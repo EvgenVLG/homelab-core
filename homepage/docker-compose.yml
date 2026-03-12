@@ -9,6 +9,10 @@ services:
       - ./data:/app/config
     networks:
       - homelab
+    labels:
+      caddy: home.home.arpa
+      caddy.tls: internal
+      caddy.reverse_proxy: "{{upstreams 3000}}"
 
 networks:
   homelab:

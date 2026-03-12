@@ -1,4 +1,3 @@
-
 services:
   adguard:
     image: adguard/adguardhome:v0.107.58
@@ -13,6 +12,10 @@ services:
     volumes:
       - ./work:/opt/adguardhome/work
       - ./conf:/opt/adguardhome/conf
+    labels:
+      caddy: adguard.home.arpa
+      caddy.tls: internal
+      caddy.reverse_proxy: "{{upstreams 3000}}"
 
 networks:
   homelab:

@@ -7,6 +7,10 @@ services:
       - ./data:/home/node/.n8n
     networks:
       - homelab
+    labels:
+      caddy: n8n.home.arpa
+      caddy.tls: internal
+      caddy.reverse_proxy: "{{upstreams 5678}}"
 
 networks:
   homelab:

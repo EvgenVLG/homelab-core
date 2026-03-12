@@ -1,27 +1,8 @@
-home.home.arpa {
-	basic_auth {
-		evgen $2a$14$eAc0orHM44g8qu26TjriAuCqV47Y4tRtfelAATEJWMUEhkPMOmMy.
-	}
-	reverse_proxy homepage:3000
-	tls internal
-}
-
-portainer.home.arpa {
-	reverse_proxy portainer:9000
-	tls internal
-}
-
-n8n.home.arpa {
-	reverse_proxy n8n:5678
-	tls internal
+{
+	auto_https disable_redirects
 }
 
 ha.home.arpa {
-	reverse_proxy 192.168.50.59:8123
-	tls internal
-}
-
-adguard.home.arpa {
-	reverse_proxy adguard:3000
+	reverse_proxy host.docker.internal:8123
 	tls internal
 }

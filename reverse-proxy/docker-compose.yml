@@ -1,12 +1,16 @@
 services:
   caddy:
-    image: caddy:2
+    image: lucaslorentz/caddy-docker-proxy:2.9-alpine
     container_name: caddy
     restart: unless-stopped
+    command: caddy docker-proxy --caddyfile-path /etc/caddy/Caddyfile
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - CADDY_INGRESS_NETWORKS=homelab
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./caddy/data:/data
       - ./caddy/config:/config
