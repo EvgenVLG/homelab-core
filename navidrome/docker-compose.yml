@@ -9,7 +9,7 @@ services:
       - /storage/navidrome/data:/data
       - /storage/media/music:/music:ro
     environment:
-      ND_SCANSCHEDULE: 1h
+      ND_SCANSCHEDULE: '@every 1h'
       ND_LOGLEVEL: info
     labels:
       caddy: music.home.arpa
