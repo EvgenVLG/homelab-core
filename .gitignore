@@ -29,3 +29,9 @@ reverse-proxy/caddy/config/
 
 # still ignore Homepage runtime logs
 homepage/data/logs/
+
+scripts/ytmusic/headers_auth.json
+scripts/ytmusic/state.json
+scripts/ytmusic/venv/
+scripts/ytmusic/logs/
+*.log
