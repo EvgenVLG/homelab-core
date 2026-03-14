@@ -1,0 +1,21 @@
+services:
+  prowlarr:
+    image: linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - /storage/prowlarr/config:/config
+    networks:
+      - homelab
+    labels:
+      caddy: prowlarr.home.arpa
+      caddy.tls: internal
+      caddy.reverse_proxy: "{{upstreams 9696}}"
+
+networks:
+  homelab:
+    external: true
