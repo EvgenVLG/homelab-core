@@ -34,4 +34,6 @@ scripts/ytmusic/headers_auth.json
 scripts/ytmusic/state.json
 scripts/ytmusic/venv/
 scripts/ytmusic/logs/
+scripts/ytmusic/__pycache__/
+scripts/homelab/__pycache__/
 *.log
