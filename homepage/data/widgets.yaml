@@ -1,17 +1,28 @@
----
 - resources:
     cpu: true
     memory: true
-    disk: /
+    disk:
+      - /
+      - /storage
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: long
+      timeStyle: short
 
 - search:
     provider: duckduckgo
     target: _blank
 
-- openmeteo:
-    label: New Market
-    latitude: 39.3865
-    longitude: -77.2761
-    timezone: America/New_York
-    units: imperial
-    cache: 5
+- docker:
+    host: my-docker
+    containers:
+      - navidrome
+      - lidarr
+      - prowlarr
+      - qbittorrent
+      - n8n
+      - portainer
+      - adguard
+      - homeassistant
