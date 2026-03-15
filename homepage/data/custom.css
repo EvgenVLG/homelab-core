@@ -8,22 +8,45 @@
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   z-index: 9999;
-  min-width: 260px;
+  min-width: 280px;
   font-size: 14px;
   line-height: 1.4;
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 .music-status-title {
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .music-status-line {
-  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 12px;
+}
+
+.music-label {
+  opacity: 0.9;
+}
+
+.music-badge {
+  color: white;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.music-divider {
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  margin: 10px 0;
 }
 
 .music-status-time {
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 12px;
   opacity: 0.75;
 }
