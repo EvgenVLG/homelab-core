@@ -8,6 +8,8 @@ services:
     volumes:
       - ./data:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /storage:/storage:ro
+      - /fast:/fast:ro
     networks:
       - homelab
     labels:

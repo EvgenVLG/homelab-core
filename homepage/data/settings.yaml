@@ -1,3 +1,17 @@
 title: Home Lab
 language: en
 headerStyle: clean
+
+layout:
+  Critical Services:
+    style: row
+    columns: 3
+  Music:
+    style: row
+    columns: 4
+  Bots & Automation:
+    style: row
+    columns: 2
+  Dashboard:
+    style: row
+    columns: 1

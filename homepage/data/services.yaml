@@ -1,11 +1,4 @@
-- System:
-    - Homepage:
-        href: https://home.home.arpa
-        description: Main dashboard
-        server: my-docker
-        container: homepage
-
-- Infrastructure:
+- Critical Services:
     - Caddy:
         href: https://home.home.arpa
         description: Reverse proxy
@@ -16,11 +9,6 @@
         description: DNS and filtering
         server: my-docker
         container: adguard
-    - Portainer:
-        href: https://portainer.home.arpa
-        description: Docker management
-        server: my-docker
-        container: portainer
     - n8n:
         href: https://n8n.home.arpa
         description: Automation workflows
@@ -31,6 +19,11 @@
         description: Smart home control
         server: my-docker
         container: homeassistant
+    - Portainer:
+        href: https://portainer.home.arpa
+        description: Docker management
+        server: my-docker
+        container: portainer
 
 - Music:
     - Navidrome:
@@ -63,3 +56,10 @@
     - Music Assistant:
         href: https://n8n.home.arpa
         description: Planned music control and voice workflows
+
+- Dashboard:
+    - Homepage:
+        href: https://home.home.arpa
+        description: Main dashboard
+        server: my-docker
+        container: homepage

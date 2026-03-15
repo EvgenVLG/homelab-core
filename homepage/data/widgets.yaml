@@ -3,8 +3,8 @@
     memory: true
     disk:
       - /
+      - /fast
       - /storage
-
 - datetime:
     text_size: xl
     format:
@@ -14,15 +14,3 @@
 - search:
     provider: duckduckgo
     target: _blank
-
-- docker:
-    host: my-docker
-    containers:
-      - navidrome
-      - lidarr
-      - prowlarr
-      - qbittorrent
-      - n8n
-      - portainer
-      - adguard
-      - homeassistant
