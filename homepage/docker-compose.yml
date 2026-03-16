@@ -4,18 +4,25 @@ services:
     container_name: homepage
     restart: unless-stopped
     environment:
-      - HOMEPAGE_ALLOWED_HOSTS=home.home.arpa
+      - HOMEPAGE_ALLOWED_HOSTS=home.home.arpa,100.79.248.118:3000,100.79.248.118,evgenserver.llama-alphard.ts.net
     volumes:
       - ./data:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /storage:/storage:ro
       - /fast:/fast:ro
+    ports:
+      - "3000:3000"
     networks:
       - homelab
+
     labels:
-      caddy: home.home.arpa
-      caddy.tls: internal
-      caddy.reverse_proxy: "{{upstreams 3000}}"
+      caddy_0: home.home.arpa
+      caddy_0.tls: internal
+      caddy_0.reverse_proxy: "{{upstreams 3000}}"
+
+      caddy_1: evgenserver.llama-alphard.ts.net
+      caddy_1.tls: internal
+      caddy_1.reverse_proxy: "{{upstreams 3000}}"
 
 networks:
   homelab:
