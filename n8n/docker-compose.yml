@@ -1,6 +1,11 @@
 services:
   n8n:
     image: n8nio/n8n:latest
+    environment:
+      - TZ=America/New_York
+      - N8N_HOST=n8n.home.arpa
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://end-screensaver-notes-may.trycloudflare.com/
     container_name: n8n
     restart: unless-stopped
     volumes:
