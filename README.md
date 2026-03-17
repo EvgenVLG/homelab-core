@@ -1,30 +1,20 @@
 # Homelab Core
 
-## Host
-- Ubuntu 24.04
-- Docker Engine
-- LAN IP: 192.168.50.59
-- Root path: /srv/docker
+This repository contains reproducible infrastructure for the homelab.
 
-## Core Services
-- Caddy
-- AdGuard
-- Homepage
-- Portainer
+## Goals
+- Docker-based platform
+- Configs stored in git
+- Host can be rebuilt from repo
+- Secrets kept out of git
 
-## Secondary Services
-- n8n
-- Home Assistant
-
-## Docker Network
-- homelab
-
-## Stable Tag
-- stable-core-2026-03-09
-
-## Operational Scripts
-- scripts/prechange.sh
-- scripts/rollback-config.sh
-- scripts/check-compose.sh
-- scripts/cleanup-backups.sh
-- scripts/healthcheck.sh
+## Layout
+- compose/core         core services
+- compose/media        media stack
+- compose/automation   n8n, bots, workflows
+- compose/monitoring   grafana/loki/prometheus later
+- env                  environment templates
+- scripts              bootstrap, backup, restore, helper scripts
+- docs                 architecture and notes
+- data                 runtime bind mounts (not tracked)
+- backups              local backups (not tracked)
