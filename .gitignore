@@ -1,39 +1,91 @@
-backups/
-docs/*.txt
+# Secrets
+env/.env
 .env
-*.log
+*.secret
+*.key
+*.pem
 
-adguard/work/
-adguard/conf/
-ha/config/
-n8n/data/
-portainer/data/
-reverse-proxy/caddy/data/
-reverse-proxy/caddy/config/
+# Generated / runtime data
+**/.DS_Store
+**/__pycache__/
+**/*.pyc
+**/tmp/
+**/cache/
+**/logs/
+**/sessions/
 
-# ignore generic runtime data by default
-**/data/
-**/work/
-**/conf/
-**/*.log
+# Container data you usually do NOT want in git
+data/**
+backups/**
 
-# but keep Homepage config in git
-!homepage/data/
-!homepage/data/services.yaml
-!homepage/data/settings.yaml
-!homepage/data/widgets.yaml
-!homepage/data/bookmarks.yaml
-!homepage/data/docker.yaml
-!homepage/data/custom.css
-!homepage/data/custom.js
+# But keep structure
+!data/.gitkeep
+!backups/.gitkeep
 
-# still ignore Homepage runtime logs
-homepage/data/logs/
+# Home Assistant runtime/state
+ha/config/*.log
+ha/config/home-assistant_v2.db
+ha/config/home-assistant_v2.db-*
+ha/config/.storage/*
+!ha/config/.storage/.gitkeep
 
-scripts/ytmusic/headers_auth.json
-scripts/ytmusic/state.json
-scripts/ytmusic/venv/
-scripts/ytmusic/logs/
-scripts/ytmusic/__pycache__/
-scripts/homelab/__pycache__/
-*.log
+# Portainer runtime DB
+portainer/data/*
+!portainer/data/.gitkeep
+
+# n8n runtime data
+n8n/data/*
+!n8n/data/.gitkeep
+
+# AdGuard runtime/work files
+adguard/work/*
+!adguard/work/.gitkeep
+
+# Homepage generated backups or transient data
+homepage/backup-*/
+
+# AdGuard mutable config/state
+adguard/conf/AdGuardHome.yaml
+
+# Home Assistant runtime leftovers
+ha/config/.ha_run.lock
+ha/config/home-assistant.log*
+ha/config/*.db
+ha/config/*.db-*
+
+# Caddy runtime state
+reverse-proxy/caddy/data/**
+
+# Generated health snapshots
+docs/health-latest.txt
+
+# AdGuard mutable config/state
+adguard/conf/AdGuardHome.yaml
+
+# Home Assistant runtime leftovers
+ha/config/.ha_run.lock
+ha/config/home-assistant.log*
+ha/config/*.db
+ha/config/*.db-*
+
+# Caddy runtime state
+reverse-proxy/caddy/data/**
+
+# Generated health snapshots
+docs/health-latest.txt
+
+# AdGuard runtime/query data
+adguard/work/**
+!adguard/work/.gitkeep
+
+# Caddy runtime state
+reverse-proxy/caddy/data/**
+
+# Home Assistant runtime leftovers
+ha/config/.ha_run.lock
+ha/config/home-assistant.log*
+ha/config/*.db
+ha/config/*.db-*
+
+# Generated health snapshots
+docs/health-latest.txt
