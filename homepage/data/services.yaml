@@ -24,7 +24,11 @@
         description: Docker management
         server: my-docker
         container: portainer
-
+    - Glances:
+        href: http://192.168.50.59:61208
+        description: Server metrics and container monitoring
+        server: my-docker
+        container: glances
 - Music:
     - Navidrome:
         href: https://music.home.arpa
