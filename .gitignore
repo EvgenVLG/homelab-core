@@ -89,3 +89,7 @@ ha/config/*.db-*
 
 # Generated health snapshots
 docs/health-latest.txt
+
+# Caddy autosave/runtime config
+reverse-proxy/caddy/config/caddy/Caddyfile.autosave
+reverse-proxy/caddy/config/caddy/autosave.json
