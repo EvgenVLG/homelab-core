@@ -25,9 +25,9 @@
         server: my-docker
         container: portainer
     - Glances:
-        href: http://192.168.50.59:61208
-        description: Server metrics and container monitoring
-        server: my-docker
+        href: https://glances.home.arpa
+        description: System monitoring
+        icon: glances.png
         container: glances
 - Music:
     - Navidrome:
