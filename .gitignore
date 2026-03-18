@@ -94,3 +94,11 @@ docs/health-latest.txt
 reverse-proxy/caddy/config/caddy/Caddyfile.autosave
 reverse-proxy/caddy/config/caddy/autosave.json
 healthcheck.sh
+
+
+secrets/
+.env
+*.env
+/storage/backups/
+*.tar.gz
+*.log
