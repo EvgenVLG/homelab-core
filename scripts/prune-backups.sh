@@ -20,11 +20,7 @@ if [[ ! -d "$BACKUP_DEST" ]]; then
   exit 1
 fi
 
-if [[ ! -w "$BACKUP_DEST" ]]; then
-  echo "ERROR: backup destination is not writable: $BACKUP_DEST"
-  ls -ld "$BACKUP_DEST" || true
-  exit 1
-fi
-
 find "$BACKUP_DEST" -type f -name "*.tar.gz" -mtime +"$RETENTION_DAYS" -print -delete
+
 echo "Prune complete"
+

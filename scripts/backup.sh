@@ -14,6 +14,7 @@ set +a
 
 BACKUP_SOURCE="${BACKUP_SOURCE:-/srv/docker}"
 BACKUP_DEST="${BACKUP_DEST:-/storage/backups}"
+BACKUP_OWNER="${BACKUP_OWNER:-evgen:evgen}"
 
 TIMESTAMP="$(date +%F_%H-%M-%S)"
 ARCHIVE_NAME="docker-config-backup_${TIMESTAMP}.tar.gz"
@@ -21,9 +22,8 @@ ARCHIVE_PATH="${BACKUP_DEST}/${ARCHIVE_NAME}"
 
 mkdir -p "$BACKUP_DEST"
 
-if [[ ! -w "$BACKUP_DEST" ]]; then
-  echo "ERROR: backup destination is not writable: $BACKUP_DEST"
-  ls -ld "$BACKUP_DEST" || true
+if [[ ! -d "$BACKUP_SOURCE" ]]; then
+  echo "ERROR: backup source does not exist: $BACKUP_SOURCE"
   exit 1
 fi
 
@@ -35,5 +35,7 @@ tar \
   -czf "$ARCHIVE_PATH" \
   -C "$BACKUP_SOURCE" .
 
-echo "Backup created: $ARCHIVE_PATH"
+chown "$BACKUP_OWNER" "$ARCHIVE_PATH"
+
+echo "Backup created successfully: $ARCHIVE_PATH"
 ls -lh "$ARCHIVE_PATH"
