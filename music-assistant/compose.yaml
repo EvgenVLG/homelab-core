@@ -4,6 +4,7 @@ services:
     image: music-assistant:latest
     container_name: music-assistant
     restart: "no"
+    user: "1000:1000"
 
     volumes:
       - ./data/input:/data/input:ro
