@@ -15,7 +15,7 @@ set +a
 HOSTNAME="${HOSTNAME:-server}"
 HAS_ERRORS=0
 
-send_telegram() {
+ send_telegram() {
   local text="$1"
 
   if [[ -z "${TELEGRAM_BOT_TOKEN:-}" || -z "${TELEGRAM_CHAT_ID:-}" ]]; then
@@ -84,7 +84,7 @@ Disk: ${DISK_USAGE}
 Memory: ${MEM_USAGE}"
   echo
   echo "$MSG"
-  send_telegram "$MSG"
+#  send_telegram "$MSG"
   exit 1
 fi
 
