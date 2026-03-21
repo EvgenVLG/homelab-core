@@ -4,11 +4,15 @@ services:
     container_name: ai-runner
     restart: unless-stopped
     environment:
-      - RUNNER_MODE=mock
+      - RUNNER_MODE=plan
       - RUNNER_LOG_DIR=/app/logs
       - TZ=America/New_York
     volumes:
       - ./logs:/app/logs
+      - /srv/docker:/workspace/homelab-core:ro
+      - /srv/docker/house-bot:/workspace/house-bot:ro
+      - /srv/docker/music-assistant:/workspace/music-assistant:ro
+      - ./generic:/workspace/generic:ro
     networks:
       - homelab
     labels:
