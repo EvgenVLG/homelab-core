@@ -132,30 +132,44 @@ def execute() -> Any:
 
     user_request = str(data.get("user_request", "")).strip()
     interpretation = data.get("interpretation") or {}
-    claude_prompt = str(data.get("claude_prompt", "")).strip()
 
-    project = str(interpretation.get("project", "generic")).strip() or "generic"
-    task_type = str(interpretation.get("task_type", "feature")).strip() or "feature"
+# 🔧 FIX: handle stringified JSON from n8n
+if isinstance(interpretation, str):
+    try:
+        interpretation = json.loads(interpretation)
+    except json.JSONDecodeError:
+        interpretation = {}
 
-    request_record = {
-        "user_request": user_request,
-        "project": project,
-        "task_type": task_type,
-        "has_prompt": bool(claude_prompt),
-        "mode": os.environ.get("RUNNER_MODE", "mock"),
-    }
-    write_log("execute_request", request_record)
+claude_prompt = str(data.get("claude_prompt", "")).strip()
 
-    result = choose_mock_output(project, user_request)
-    result["runner"] = {
-        "service": "ai-runner",
-        "mode": os.environ.get("RUNNER_MODE", "mock"),
-        "ts": utc_now(),
-    }
+project = str(interpretation.get("project", "generic")).strip() or "generic"
+task_type = str(interpretation.get("task_type", "feature")).strip() or "feature"
 
-    write_log("execute_response", result)
-    return jsonify(result)
+request_record = {
+    "user_request": user_request,
+    "project": project,
+    "task_type": task_type,
+    "has_prompt": bool(claude_prompt),
+    "mode": os.environ.get("RUNNER_MODE", "mock"),
+}
 
+write_log("execute_request", request_record)
+
+result = choose_mock_output(project, user_request)
+
+# 🔧 IMPORTANT: return context
+result["user_request"] = user_request
+result["interpretation"] = interpretation
+result["claude_prompt"] = claude_prompt
+
+result["runner"] = {
+    "service": "ai-runner",
+    "mode": os.environ.get("RUNNER_MODE", "mock"),
+    "ts": utc_now(),
+}
+
+write_log("execute_response", result)
+return jsonify(result)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8081, debug=False)
