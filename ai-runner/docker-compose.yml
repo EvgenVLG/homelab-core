@@ -1,0 +1,21 @@
+services:
+  ai-runner:
+    build: .
+    container_name: ai-runner
+    restart: unless-stopped
+    environment:
+      - RUNNER_MODE=mock
+      - RUNNER_LOG_DIR=/app/logs
+      - TZ=America/New_York
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - homelab
+    labels:
+      caddy: ai-runner.home.arpa
+      caddy.tls: internal
+      caddy.reverse_proxy: "{{upstreams 8081}}"
+
+networks:
+  homelab:
+    external: true
