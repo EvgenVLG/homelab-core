@@ -1,0 +1,21 @@
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    restart: unless-stopped
+
+    volumes:
+      - ./data:/app/data
+
+    networks:
+      - homelab
+
+    labels:
+      caddy: kuma.home.arpa
+      caddy.tls: internal
+      caddy.reverse_proxy: "{{upstreams 3001}}"
+
+networks:
+  homelab:
+    external: true
+
