@@ -16,6 +16,7 @@ LOG_DIR = Path(os.environ.get("RUNNER_LOG_DIR", "/app/logs"))
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 RUNNER_MODE = os.environ.get("RUNNER_MODE", "mock").strip().lower()
+CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "/root/.local/bin/claude").strip()
 
 PROJECT_PATHS = {
     "house-bot": "/workspace/house-bot",
@@ -43,6 +44,14 @@ def write_log(event_type: str, payload: dict[str, Any]) -> None:
     }
     with log_file.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def write_prompt_file(execution_id: str, claude_prompt: str) -> str:
+    prompt_dir = LOG_DIR / "prompts"
+    prompt_dir.mkdir(parents=True, exist_ok=True)
+    prompt_file = prompt_dir / f"{execution_id}.txt"
+    prompt_file.write_text(claude_prompt, encoding="utf-8")
+    return str(prompt_file)
 
 
 def choose_mock_output(project: str, user_request: str) -> dict[str, Any]:
@@ -136,14 +145,10 @@ def build_plan_only_output(
     execution_id: str,
 ) -> dict[str, Any]:
     project_path = PROJECT_PATHS.get(project, PROJECT_PATHS["generic"])
-
-    # Пока это не реальный Claude CLI вызов, а подготовленный plan-only ответ.
-    # Следующим этапом мы заменим это на controlled subprocess/CLI call.
     summary = (
         f"Plan-only execution prepared for project '{project}'. "
         f"No files were modified. Ready to replace with real Claude executor."
     )
-
     preview_prompt = claude_prompt[:4000]
 
     return {
@@ -168,6 +173,103 @@ def build_plan_only_output(
     }
 
 
+def run_claude_plan(
+    project: str,
+    user_request: str,
+    claude_prompt: str,
+    execution_id: str,
+) -> dict[str, Any]:
+    project_path = PROJECT_PATHS.get(project, PROJECT_PATHS["generic"])
+    prompt_file = write_prompt_file(execution_id, claude_prompt)
+
+    cmd = [
+        CLAUDE_BIN,
+        "-p",
+        claude_prompt,
+        "--output-format",
+        "text",
+    ]
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as e:
+        return {
+            "status": "error",
+            "summary": "Claude plan execution timed out.",
+            "files_changed": [],
+            "diff": "",
+            "commands": [],
+            "assumptions": [
+                "Claude CLI timed out",
+                "No files were changed",
+            ],
+            "claude": {
+                "exit_code": None,
+                "stdout_preview": (e.stdout or "")[:4000],
+                "stderr_preview": (e.stderr or "")[:4000],
+                "prompt_file": prompt_file,
+            },
+        }
+    except FileNotFoundError:
+        return {
+            "status": "error",
+            "summary": f"Claude binary not found at {CLAUDE_BIN}",
+            "files_changed": [],
+            "diff": "",
+            "commands": [],
+            "assumptions": [
+                "Claude CLI is unavailable in runner container",
+                "No files were changed",
+            ],
+            "claude": {
+                "exit_code": None,
+                "stdout_preview": "",
+                "stderr_preview": "",
+                "prompt_file": prompt_file,
+            },
+        }
+
+    stdout = (proc.stdout or "").strip()
+    stderr = (proc.stderr or "").strip()
+
+    summary = "Claude plan execution completed."
+    if proc.returncode != 0:
+        summary = "Claude plan execution failed."
+
+    return {
+        "status": "success" if proc.returncode == 0 else "error",
+        "summary": summary,
+        "files_changed": [],
+        "diff": "",
+        "commands": [
+            f"cd {project_path}",
+            "# Claude was run in plan-only mode",
+        ],
+        "assumptions": [
+            "Claude was invoked in plan-only mode",
+            "No files were changed",
+        ],
+        "claude": {
+            "exit_code": proc.returncode,
+            "stdout_preview": stdout[:8000],
+            "stderr_preview": stderr[:4000],
+            "prompt_file": prompt_file,
+        },
+        "plan": {
+            "project_path": project_path,
+            "execution_id": execution_id,
+            "prompt_preview": claude_prompt[:4000],
+        },
+    }
+
+
 @app.get("/health")
 def health() -> Any:
     return jsonify(
@@ -185,7 +287,6 @@ def execute() -> Any:
     data = request.get_json(silent=True) or {}
 
     execution_id = str(data.get("execution_id") or new_execution_id()).strip()
-
     user_request = str(data.get("user_request", "")).strip()
     interpretation = data.get("interpretation") or {}
 
@@ -212,7 +313,14 @@ def execute() -> Any:
     }
     write_log("execute_request", request_record)
 
-    if RUNNER_MODE == "plan":
+    if RUNNER_MODE == "claude_plan":
+        result = run_claude_plan(
+            project=project,
+            user_request=user_request,
+            claude_prompt=claude_prompt,
+            execution_id=execution_id,
+        )
+    elif RUNNER_MODE == "plan":
         result = build_plan_only_output(
             project=project,
             user_request=user_request,
