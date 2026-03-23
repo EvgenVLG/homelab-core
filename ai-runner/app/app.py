@@ -207,7 +207,7 @@ def run_claude_plan(
             cwd=project_path,
             capture_output=True,
             text=True,
-            timeout=420,
+            timeout=900,
             check=False,
         )
 
@@ -366,5 +366,5 @@ def execute() -> Any:
     return jsonify(result)
 
 
-if name == "__main__":
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8081, debug=False)
