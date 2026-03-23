@@ -3,7 +3,7 @@ services:
     image: n8nio/n8n:latest
     container_name: n8n
     restart: unless-stopped
-   
+
     env_file:
       - /srv/docker/secrets/.env
 
@@ -14,7 +14,7 @@ services:
       - N8N_HOST=n8n.home.arpa
       - N8N_PROTOCOL=https
       - N8N_PORT=5678
-
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
       - N8N_EDITOR_BASE_URL=https://n8n.home.arpa
       - WEBHOOK_URL=https://n8n.home.arpa
 
