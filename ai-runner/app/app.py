@@ -133,7 +133,8 @@ def choose_mock_output(project: str, user_request: str) -> dict[str, Any]:
         ],
         "assumptions": [
             "Runner is still in mock mode",
-            "No real files were changed",
+
+"No real files were changed",
         ],
     }
 
@@ -191,14 +192,33 @@ def run_claude_plan(
     ]
 
     try:
+        write_log(
+            "claude_start",
+            {
+                "execution_id": execution_id,
+                "project": project,
+                "project_path": project_path,
+                "cmd": cmd,
+            },
+        )
+
         proc = subprocess.run(
             cmd,
             cwd=project_path,
             capture_output=True,
             text=True,
-            timeout=180,
+            timeout=420,
             check=False,
         )
+
+        write_log(
+            "claude_finish",
+            {
+                "execution_id": execution_id,
+                "returncode": proc.returncode,
+            },
+        )
+
     except subprocess.TimeoutExpired as e:
         return {
             "status": "error",
@@ -262,7 +282,8 @@ def run_claude_plan(
             "stderr_preview": stderr[:4000],
             "prompt_file": prompt_file,
         },
-        "plan": {
+
+"plan": {
             "project_path": project_path,
             "execution_id": execution_id,
             "prompt_preview": claude_prompt[:4000],
@@ -345,5 +366,5 @@ def execute() -> Any:
     return jsonify(result)
 
 
-if __name__ == "__main__":
+if name == "__main__":
     app.run(host="0.0.0.0", port=8081, debug=False)
