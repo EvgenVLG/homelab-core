@@ -14,7 +14,7 @@ services:
 
     volumes:
       - ./logs:/app/logs
-
+      - ./app:/app
       # 👇 проекты (read-only)
       - /srv/docker:/workspace/homelab-core:ro
       - /srv/docker/house-bot:/workspace/house-bot:ro
