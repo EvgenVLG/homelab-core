@@ -1,109 +1,125 @@
-"""
-Recursively scan a local music library directory.
-
-Path convention assumed (most common self-hosted layouts):
-  <library_root>/<Artist>/<Album>/<track>.<ext>
-  <library_root>/<Artist>/<track>.<ext>
-
-Tags are read via mutagen if installed; otherwise falls back to
-path-based inference. The scanner works without mutagen — it just
-produces slightly less accurate metadata for non-standard layouts.
-"""
-from __future__ import annotations
 import logging
-import os
 import re
 from pathlib import Path
 
-from .models import LibraryTrack
+log = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
-try:
-    import mutagen  # type: ignore
-    _MUTAGEN = True
-    logger.debug("mutagen available — tag reading enabled")
-except ImportError:
-    _MUTAGEN = False
-    logger.debug("mutagen not installed — using path-based metadata inference only")
+AUDIO_EXTENSIONS_DEFAULT = (".mp3", ".flac", ".m4a", ".aac", ".ogg", ".wav")
 
 
-# Strip common numeric track prefixes: "01 - ", "02. ", "3 "
-_TRACKNUM_RE = re.compile(r"^\d{1,3}[\s.\-_]+")
+def _normalize_whitespace(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "")).strip()
 
 
-def _read_tags(path: Path) -> tuple[str, str, str]:
-    """Return (artist, album, title) from file tags. Returns empty strings on failure."""
-    if not _MUTAGEN:
-        return "", "", ""
-    try:
-        f = mutagen.File(path, easy=True)
-        if f is None:
-            return "", "", ""
-
-        def _first(key: str) -> str:
-            val = f.get(key)
-            return str(val[0]).strip() if val else ""
-
-        return _first("artist"), _first("album"), _first("title")
-    except Exception as exc:
-        logger.debug("Tag read failed for %s: %s", path.name, exc)
-        return "", "", ""
+def _strip_extension(name: str) -> str:
+    return Path(name).stem
 
 
-def _infer_from_path(path: Path, library_root: Path) -> tuple[str, str, str]:
+def _clean_artist(text: str) -> str:
+    text = (text or "").replace("_", " ").strip()
+    return _normalize_whitespace(text)
+
+
+def _clean_title(raw_title: str, artist: str | None = None, album: str | None = None) -> str:
     """
-    Infer (artist, album, title) from path segments relative to library root.
-
-    depth ≥ 3:  parts[-3] = artist, parts[-2] = album, parts[-1] = file
-    depth == 2: parts[-2] = artist, parts[-1] = file
-    depth == 1: no artist/album, only title from filename
+    Clean ugly filename-derived titles such as:
+      01 - Song
+      03. Song
+      Artist - Album - 03 - Song
+      Artist - 01 - Song
+      Album - 07 - Song
     """
-    try:
-        rel = path.relative_to(library_root)
-    except ValueError:
-        rel = path
+    text = _strip_extension(raw_title)
+    text = text.replace("_", " ").strip()
 
-    parts = list(rel.parts)
-    stem = _TRACKNUM_RE.sub("", path.stem).strip()
+    # Repeatedly remove leading numeric prefixes
+    for _ in range(3):
+        new_text = re.sub(r"^\s*\d{1,2}\s*[-._)\]]\s*", "", text)
+        if new_text == text:
+            new_text = re.sub(r"^\s*\d{1,2}\s+", "", text)
+        if new_text == text:
+            break
+        text = new_text.strip()
 
-    if len(parts) >= 3:
-        return parts[-3], parts[-2], stem
-    elif len(parts) == 2:
-        return parts[-2], "", stem
-    else:
-        return "", "", stem
+    parts = [p.strip() for p in re.split(r"\s+-\s+", text) if p.strip()]
+
+    artist_l = (artist or "").strip().lower()
+    album_l = (album or "").strip().lower()
+
+    changed = True
+    while changed and len(parts) > 1:
+        changed = False
+        head = parts[0].lower()
+
+        if artist_l and head == artist_l:
+            parts.pop(0)
+            changed = True
+            continue
+
+        if album_l and head == album_l:
+            parts.pop(0)
+            changed = True
+            continue
+
+        if re.fullmatch(r"\d{1,2}", head):
+            parts.pop(0)
+            changed = True
+            continue
+
+        if re.fullmatch(r"(cd|disc)\s*\d+", head):
+            parts.pop(0)
+            changed = True
+            continue
+
+    if parts and re.fullmatch(r"\d{1,2}", parts[0]):
+        parts.pop(0)
+
+    text = " - ".join(parts) if parts else text
+
+    text = re.sub(r"\s*\[(official|lyrics?|audio|video|hd|hq)\]\s*$", "", text, flags=re.I)
+    text = re.sub(r"\s*\((official|lyrics?|audio|video|hd|hq)\)\s*$", "", text, flags=re.I)
+
+    return _normalize_whitespace(text)
 
 
-def scan_library(library_dir: str, audio_extensions: frozenset[str]) -> list[LibraryTrack]:
-    """Walk library_dir and return a LibraryTrack for every audio file found."""
-    tracks: list[LibraryTrack] = []
-    root = Path(library_dir)
+def _derive_track_fields(path: Path) -> tuple[str | None, str]:
+    stem = path.stem.replace("_", " ").strip()
+    parts = [p.strip() for p in re.split(r"\s+-\s+", stem) if p.strip()]
 
-    if not root.exists():
-        logger.error("Library directory does not exist: %s", library_dir)
-        return tracks
+    if len(parts) == 2:
+        return parts[0], parts[1]
 
-    for dirpath, _dirs, filenames in os.walk(root):
-        for name in sorted(filenames):
-            ext = Path(name).suffix.lower()
-            if ext not in audio_extensions:
-                continue
+    return None, stem
 
-            abs_path = Path(dirpath) / name
-            tag_artist, tag_album, tag_title = _read_tags(abs_path)
-            inf_artist, inf_album, inf_title = _infer_from_path(abs_path, root)
 
-            tracks.append(
-                LibraryTrack(
-                    path=str(abs_path),
-                    filename=Path(name).stem,
-                    artist=tag_artist or inf_artist,
-                    album=tag_album or inf_album,
-                    title=tag_title or inf_title,
-                    extension=ext,
-                )
-            )
+def scan_library(library_dir, audio_extensions=AUDIO_EXTENSIONS_DEFAULT):
+    tracks = []
+    exts = {ext.lower() for ext in audio_extensions}
 
-    logger.info("Library scan complete: %d tracks found in %s", len(tracks), library_dir)
+    for path in Path(library_dir).rglob("*"):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in exts:
+            continue
+
+        # Minimal metadata placeholders.
+        # If later you add real tag parsing, keep the same fallback flow.
+        tag_artist = None
+        tag_title = None
+        tag_album = None
+
+        file_artist, file_title = _derive_track_fields(path)
+
+        artist = tag_artist or file_artist or path.parent.name
+        raw_title = tag_title or file_title or path.stem
+        clean_title = _clean_title(raw_title, artist=artist, album=tag_album)
+
+        tracks.append({
+            "path": str(path),
+            "artist": _clean_artist(artist or ""),
+            "title": clean_title,
+            "album": tag_album or "",
+        })
+
+    log.info("Library scan complete: %s tracks found in %s", len(tracks), library_dir)
     return tracks
