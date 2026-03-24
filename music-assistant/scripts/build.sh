@@ -8,6 +8,6 @@ echo "[build] ensuring directories exist..."
 mkdir -p data/input data/output data/state
 
 echo "[build] building docker image..."
-docker compose build
+docker compose -f compose.yml build
 
 echo "[build] done."

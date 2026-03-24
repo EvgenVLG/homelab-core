@@ -7,17 +7,13 @@ cd "$ROOT_DIR"
 echo "[rebuild] ensuring directories exist..."
 mkdir -p data/input data/output data/state
 
-echo "[rebuild] docker compose build..."
-docker compose build
+echo "[rebuild] docker compose -f compose.yml build..."
+docker compose -f compose.yml build
 
 echo "[rebuild] init db..."
-docker compose run --rm music-assistant python scripts/init_db.py
+docker compose -f compose.yml run --rm --entrypoint "" music-assistant python -m app.db.init_db
 
 echo "[rebuild] run pipeline..."
-docker compose run --rm music-assistant run-all
+docker compose -f compose.yml run --rm music-assistant run-all
 
 echo "[rebuild] done."
-echo
-echo "Check outputs:"
-echo "  head -30 data/output/matched_tracks.csv"
-echo "  cat data/output/summary.json"
