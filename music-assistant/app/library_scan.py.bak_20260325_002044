@@ -21,14 +21,6 @@ def _clean_artist(text: str) -> str:
     return _normalize_whitespace(text)
 
 
-def _normalize_compare(text: str) -> str:
-    text = (text or "").lower().replace("_", " ").strip()
-    text = re.sub(r"\(\d{4}\)", "", text)
-    text = re.sub(r"\[\d{4}\]", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
 def _clean_title(raw_title: str, artist: str | None = None, album: str | None = None) -> str:
     text = _strip_extension(raw_title)
     text = text.replace("_", " ").strip()
@@ -43,13 +35,13 @@ def _clean_title(raw_title: str, artist: str | None = None, album: str | None = 
 
     parts = [p.strip() for p in re.split(r"\s+-\s+", text) if p.strip()]
 
-    artist_l = _normalize_compare(artist or "")
-    album_l = _normalize_compare(album or "")
+    artist_l = (artist or "").strip().lower()
+    album_l = (album or "").strip().lower()
 
     changed = True
     while changed and len(parts) > 1:
         changed = False
-        head = _normalize_compare(parts[0])
+        head = parts[0].lower()
 
         if artist_l and head == artist_l:
             parts.pop(0)
@@ -71,7 +63,7 @@ def _clean_title(raw_title: str, artist: str | None = None, album: str | None = 
             changed = True
             continue
 
-    if parts and re.fullmatch(r"\d{1,2}", _normalize_compare(parts[0])):
+    if parts and re.fullmatch(r"\d{1,2}", parts[0]):
         parts.pop(0)
 
     text = " - ".join(parts) if parts else text
@@ -86,6 +78,7 @@ def _derive_track_fields(path: Path) -> tuple[str | None, str]:
     stem = path.stem.replace("_", " ").strip()
     parts = [p.strip() for p in re.split(r"\s+-\s+", stem) if p.strip()]
 
+    # only trust very simple "Artist - Title"
     if len(parts) == 2:
         return parts[0], parts[1]
 
@@ -111,6 +104,7 @@ def scan_library(library_dir, audio_extensions=AUDIO_EXTENSIONS_DEFAULT):
         parent = path.parent.name if path.parent else ""
         grandparent = path.parent.parent.name if len(path.parts) >= 2 else ""
 
+        # expected layout: /library/Artist/Album/trackfile.ext
         album = tag_album or parent or ""
         artist = tag_artist or grandparent or file_artist or parent or ""
         raw_title = tag_title or file_title or path.stem

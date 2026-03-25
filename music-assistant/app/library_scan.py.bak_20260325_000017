@@ -1,7 +1,6 @@
 import logging
 import re
 from pathlib import Path
-from types import SimpleNamespace
 
 log = logging.getLogger(__name__)
 
@@ -21,18 +20,19 @@ def _clean_artist(text: str) -> str:
     return _normalize_whitespace(text)
 
 
-def _normalize_compare(text: str) -> str:
-    text = (text or "").lower().replace("_", " ").strip()
-    text = re.sub(r"\(\d{4}\)", "", text)
-    text = re.sub(r"\[\d{4}\]", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
 def _clean_title(raw_title: str, artist: str | None = None, album: str | None = None) -> str:
+    """
+    Clean ugly filename-derived titles such as:
+      01 - Song
+      03. Song
+      Artist - Album - 03 - Song
+      Artist - 01 - Song
+      Album - 07 - Song
+    """
     text = _strip_extension(raw_title)
     text = text.replace("_", " ").strip()
 
+    # Repeatedly remove leading numeric prefixes
     for _ in range(3):
         new_text = re.sub(r"^\s*\d{1,2}\s*[-._)\]]\s*", "", text)
         if new_text == text:
@@ -43,13 +43,13 @@ def _clean_title(raw_title: str, artist: str | None = None, album: str | None = 
 
     parts = [p.strip() for p in re.split(r"\s+-\s+", text) if p.strip()]
 
-    artist_l = _normalize_compare(artist or "")
-    album_l = _normalize_compare(album or "")
+    artist_l = (artist or "").strip().lower()
+    album_l = (album or "").strip().lower()
 
     changed = True
     while changed and len(parts) > 1:
         changed = False
-        head = _normalize_compare(parts[0])
+        head = parts[0].lower()
 
         if artist_l and head == artist_l:
             parts.pop(0)
@@ -71,7 +71,7 @@ def _clean_title(raw_title: str, artist: str | None = None, album: str | None = 
             changed = True
             continue
 
-    if parts and re.fullmatch(r"\d{1,2}", _normalize_compare(parts[0])):
+    if parts and re.fullmatch(r"\d{1,2}", parts[0]):
         parts.pop(0)
 
     text = " - ".join(parts) if parts else text
@@ -102,27 +102,24 @@ def scan_library(library_dir, audio_extensions=AUDIO_EXTENSIONS_DEFAULT):
         if path.suffix.lower() not in exts:
             continue
 
+        # Minimal metadata placeholders.
+        # If later you add real tag parsing, keep the same fallback flow.
         tag_artist = None
         tag_title = None
         tag_album = None
 
         file_artist, file_title = _derive_track_fields(path)
 
-        parent = path.parent.name if path.parent else ""
-        grandparent = path.parent.parent.name if len(path.parts) >= 2 else ""
-
-        album = tag_album or parent or ""
-        artist = tag_artist or grandparent or file_artist or parent or ""
+        artist = tag_artist or file_artist or path.parent.name
         raw_title = tag_title or file_title or path.stem
-        clean_title = _clean_title(raw_title, artist=artist, album=album)
+        clean_title = _clean_title(raw_title, artist=artist, album=tag_album)
 
-        tracks.append(SimpleNamespace(
-            path=str(path),
-            artist=_clean_artist(artist),
-            title=clean_title,
-            album=_normalize_whitespace(album),
-            extension=path.suffix.lower(),
-        ))
+        tracks.append({
+            "path": str(path),
+            "artist": _clean_artist(artist or ""),
+            "title": clean_title,
+            "album": tag_album or "",
+        })
 
     log.info("Library scan complete: %s tracks found in %s", len(tracks), library_dir)
     return tracks
