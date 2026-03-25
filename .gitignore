@@ -70,3 +70,10 @@ __pycache__/
 *.bak*
 *backup*
 
+
+# sensitive live configs
+adguard/conf/AdGuardHome.yaml
+ha/config/secrets.yaml
+healthcheck.sh
+scripts/ytmusic/headers_for_debug.txt
+music-assistant/data/state/
