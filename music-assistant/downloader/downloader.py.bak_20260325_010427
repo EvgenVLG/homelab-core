@@ -105,7 +105,6 @@ def run_download(row):
         "--extractor-args", "youtube:player_client=web",
         "--js-runtimes", "node",
         "--remote-components", "ejs:github",
-        "--cache-dir", "/cache/yt-dlp",
         "--output", output_template,
         "--print", "after_move:filepath",
     ]
