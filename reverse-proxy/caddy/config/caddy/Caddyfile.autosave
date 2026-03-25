@@ -1,0 +1,55 @@
+{
+	auto_https disable_redirects
+}
+ha.home.arpa {
+	reverse_proxy host.docker.internal:8123
+	tls internal
+}
+adguard.home.arpa {
+	reverse_proxy 172.20.0.6:3000
+	tls internal
+}
+ai-runner.home.arpa {
+	reverse_proxy 172.20.0.11:8081
+	tls internal
+}
+evgenserver.llama-alphard.ts.net {
+	reverse_proxy 172.20.0.4:3000
+	tls internal
+}
+glances.home.arpa {
+	reverse_proxy 172.20.0.13:61208
+	tls internal
+}
+home.home.arpa {
+	reverse_proxy 172.20.0.4:3000
+	tls internal
+}
+kuma.home.arpa {
+	reverse_proxy 172.20.0.14:3001
+	tls internal
+}
+lidarr.home.arpa {
+	reverse_proxy 172.20.0.8:8686
+	tls internal
+}
+music.home.arpa {
+	reverse_proxy 172.20.0.3:4533
+	tls internal
+}
+n8n.home.arpa {
+	reverse_proxy 172.20.0.7:5678
+	tls internal
+}
+portainer.home.arpa {
+	reverse_proxy 172.20.0.2:9000
+	tls internal
+}
+prowlarr.home.arpa {
+	reverse_proxy 172.20.0.10:9696
+	tls internal
+}
+torrents.home.arpa {
+	reverse_proxy 172.20.0.5:8080
+	tls internal
+}

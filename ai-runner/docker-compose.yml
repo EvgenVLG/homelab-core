@@ -1,0 +1,40 @@
+services:
+  ai-runner:
+    build: .
+    container_name: ai-runner
+    restart: unless-stopped
+
+    environment:
+      - RUNNER_MODE=claude_plan
+      - RUNNER_LOG_DIR=/app/logs
+      - TZ=America/New_York
+      - PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - RUNNER_MODE=claude_plan
+      - CLAUDE_BIN=/root/.local/bin/claude
+
+    volumes:
+      - ./logs:/app/logs
+      - ./app:/app
+      # 👇 проекты (read-only)
+      - /srv/docker:/workspace/homelab-core:ro
+      - /srv/docker/house-bot:/workspace/house-bot:ro
+      - /srv/docker/music-assistant:/workspace/music-assistant:ro
+      - ./generic:/workspace/generic:ro
+      # 👇 вот это самое важное
+      - /home/evgen/.claude.json:/root/.claude.json:ro
+      - /home/evgen/.local/bin:/root/.local/bin:ro
+      - /home/evgen/.claude:/root/.claude:ro
+      - /home/evgen/.local/share/claude:/home/evgen/.local/share/claude:ro
+
+
+    networks:
+      - homelab
+
+    labels:
+      caddy: ai-runner.home.arpa
+      caddy.tls: internal
+      caddy.reverse_proxy: "{{upstreams 8081}}"
+
+networks:
+  homelab:
+    external: true

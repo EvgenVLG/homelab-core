@@ -1,0 +1,17 @@
+
+# runtime data
+data/
+downloader/cache/
+*.csv
+
+# downloads / media
+/storage/
+downloads/
+
+# python junk
+__pycache__/
+*.pyc
+
+# env
+.env
+*.bak_*

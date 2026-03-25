@@ -1,0 +1,12 @@
+# secrets
+headers_auth.json
+
+# python
+venv/
+
+# logs
+logs/
+*.log
+
+# runtime state
+state.json

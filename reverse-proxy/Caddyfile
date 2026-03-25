@@ -1,0 +1,8 @@
+{
+	auto_https disable_redirects
+}
+
+ha.home.arpa {
+	reverse_proxy host.docker.internal:8123
+	tls internal
+}

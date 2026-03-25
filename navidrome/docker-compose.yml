@@ -1,0 +1,21 @@
+services:
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    restart: unless-stopped
+    networks:
+      - homelab
+    volumes:
+      - /storage/navidrome/data:/data
+      - /storage/media/music:/music:ro
+    environment:
+      ND_SCANSCHEDULE: '@every 1h'
+      ND_LOGLEVEL: info
+    labels:
+      caddy: music.home.arpa
+      caddy.tls: internal
+      caddy.reverse_proxy: "{{upstreams 4533}}"
+
+networks:
+  homelab:
+    external: true
