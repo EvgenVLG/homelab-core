@@ -13,42 +13,6 @@ def _history_title(row):
     return (_field(row, "title", "") or _field(row, "track", "") or "").strip()
 
 
-def _variant_type(title: str) -> str:
-    t = (title or "").lower()
-
-    if "karaoke" in t:
-        return "karaoke"
-    if "8d" in t:
-        return "8d"
-    if "slowed" in t or "reverb" in t or "sped up" in t or "speed up" in t:
-        return "edit"
-    if "nightcore" in t:
-        return "nightcore"
-    if "tutorial" in t or "reaction" in t:
-        return "noise"
-    if "lyrics video" in t or "official video" in t:
-        return "video"
-    if "cover" in t:
-        return "cover"
-    if "rock version" in t:
-        return "rock_version"
-    if "acoustic" in t:
-        return "acoustic"
-    if "unplugged" in t:
-        return "unplugged"
-    if "live" in t:
-        return "live"
-    if "instrumental" in t:
-        return "instrumental"
-    if "video edit" in t:
-        return "edit"
-    if "edit" in t:
-        return "edit"
-    if "remix" in t:
-        return "remix"
-    return "standard"
-
-
 def build_missing_tracks(unmatched):
     grouped = {}
 
@@ -60,6 +24,7 @@ def build_missing_tracks(unmatched):
         first_seen = (_field(row, "timestamp", "") or "").strip()
         last_seen = (_field(row, "timestamp", "") or "").strip()
 
+        # skip garbage rows with no actual track title
         if not artist and not title:
             continue
         if not title:
@@ -76,7 +41,6 @@ def build_missing_tracks(unmatched):
                 "priority": 0.0,
                 "first_seen": first_seen,
                 "last_seen": last_seen,
-                "variant_type": _variant_type(title),
             }
 
         grouped[key]["play_count"] += play_count
@@ -100,7 +64,6 @@ def build_missing_tracks(unmatched):
             "priority": item["priority"],
             "first_seen": item["first_seen"],
             "last_seen": item["last_seen"],
-            "variant_type": item["variant_type"],
             "search_query": f'{item["artist"]} - {item["title"]}'.strip(" -"),
         })
 
@@ -164,7 +127,6 @@ def write_missing_queue(unmatched, output_dir):
                 "priority",
                 "first_seen",
                 "last_seen",
-                "variant_type",
                 "search_query",
             ],
         )

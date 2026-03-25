@@ -1,0 +1,169 @@
+import csv
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+INPUT_CSV = os.environ.get("INPUT_CSV", "/data/output/missing_tracks.csv")
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "/downloads/music-import"))
+RESULTS_CSV = os.environ.get("RESULTS_CSV", "/data/output/downloader_queue_results.csv")
+TOP_N = int(os.environ.get("TOP_N", "20"))
+
+# what we allow for MVP
+ALLOWED_VARIANTS = {
+    "standard",
+    "cover",
+    "rock_version",
+    "acoustic",
+    "live",
+    "unplugged",
+    "remix",
+}
+
+# optionally skip ultra-low-priority junk
+MIN_PRIORITY = float(os.environ.get("MIN_PRIORITY", "3"))
+
+
+def safe_name(s: str) -> str:
+    s = (s or "").strip()
+    s = re.sub(r'[<>:"/\\|?*\x00-\x1F]', "_", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s[:180] if s else "Unknown"
+
+
+def load_rows(path: str):
+    rows = []
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                row["play_count"] = int(float(row.get("play_count", 0) or 0))
+            except Exception:
+                row["play_count"] = 0
+            try:
+                row["priority"] = float(row.get("priority", 0) or 0)
+            except Exception:
+                row["priority"] = 0.0
+            rows.append(row)
+    return rows
+
+
+def select_rows(rows):
+    filtered = []
+    for row in rows:
+        variant = (row.get("variant_type") or "standard").strip().lower()
+        priority = float(row.get("priority", 0) or 0)
+        title = (row.get("title") or "").strip()
+        artist = (row.get("artist") or "").strip()
+
+        if not artist or not title:
+            continue
+        if variant not in ALLOWED_VARIANTS:
+            continue
+        if priority < MIN_PRIORITY:
+            continue
+
+        filtered.append(row)
+
+    filtered.sort(key=lambda r: (-float(r.get("priority", 0)), -int(r.get("play_count", 0)), r.get("artist", ""), r.get("title", "")))
+    return filtered[:TOP_N]
+
+
+def run_download(row):
+    artist = row["artist"].strip()
+    title = row["title"].strip()
+    variant = (row.get("variant_type") or "standard").strip().lower()
+    query = (row.get("search_query") or f"{artist} - {title}").strip()
+
+    artist_dir = OUTPUT_DIR / safe_name(artist)
+    artist_dir.mkdir(parents=True, exist_ok=True)
+
+    # We prefer audio extraction to m4a-ish output if possible.
+    # ffmpeg is installed, so yt-dlp can convert.
+    output_template = str(artist_dir / f"{safe_name(title)}.%(ext)s")
+
+    cmd = [
+        "yt-dlp",
+        f"ytsearch1:{query}",
+        "--no-playlist",
+        "--extract-audio",
+        "--audio-format", "mp3",
+        "--audio-quality", "0",
+        "--embed-metadata",
+        "--add-metadata",
+        "--output", output_template,
+        "--print", "after_move:filepath",
+    ]
+
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+
+    stdout = (proc.stdout or "").strip()
+    stderr = (proc.stderr or "").strip()
+
+    downloaded_path = ""
+    if proc.returncode == 0:
+        # last non-empty line is usually safest
+        lines = [line.strip() for line in stdout.splitlines() if line.strip()]
+        if lines:
+            downloaded_path = lines[-1]
+
+    return {
+        "artist": artist,
+        "title": title,
+        "variant_type": variant,
+        "priority": row.get("priority", ""),
+        "play_count": row.get("play_count", ""),
+        "search_query": query,
+        "status": "ok" if proc.returncode == 0 else "failed",
+        "downloaded_path": downloaded_path,
+        "stderr": stderr[:1000],
+    }
+
+
+def write_results(rows, path: str):
+    path_obj = Path(path)
+    path_obj.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path_obj, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "artist",
+                "title",
+                "variant_type",
+                "priority",
+                "play_count",
+                "search_query",
+                "status",
+                "downloaded_path",
+                "stderr",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def main():
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    rows = load_rows(INPUT_CSV)
+    selected = select_rows(rows)
+
+    print(f"loaded rows: {len(rows)}")
+    print(f"selected rows: {len(selected)}")
+    print(f"output dir: {OUTPUT_DIR}")
+
+    results = []
+    for i, row in enumerate(selected, 1):
+        print(f"[{i}/{len(selected)}] {row['artist']} - {row['title']} [{row.get('variant_type','standard')}]")
+        result = run_download(row)
+        print(f"  -> {result['status']}: {result['downloaded_path'] or result['stderr'][:120]}")
+        results.append(result)
+
+    write_results(results, RESULTS_CSV)
+    print(f"results written: {RESULTS_CSV}")
+
+
+if __name__ == "__main__":
+    main()

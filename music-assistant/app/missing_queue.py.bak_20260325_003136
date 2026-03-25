@@ -1,6 +1,6 @@
+import csv
 from collections import defaultdict
 from pathlib import Path
-import csv
 
 
 def _field(obj, name, default=""):
@@ -9,61 +9,14 @@ def _field(obj, name, default=""):
     return getattr(obj, name, default)
 
 
-def _history_title(row):
-    return (_field(row, "title", "") or _field(row, "track", "") or "").strip()
-
-
-def _variant_type(title: str) -> str:
-    t = (title or "").lower()
-
-    if "karaoke" in t:
-        return "karaoke"
-    if "8d" in t:
-        return "8d"
-    if "slowed" in t or "reverb" in t or "sped up" in t or "speed up" in t:
-        return "edit"
-    if "nightcore" in t:
-        return "nightcore"
-    if "tutorial" in t or "reaction" in t:
-        return "noise"
-    if "lyrics video" in t or "official video" in t:
-        return "video"
-    if "cover" in t:
-        return "cover"
-    if "rock version" in t:
-        return "rock_version"
-    if "acoustic" in t:
-        return "acoustic"
-    if "unplugged" in t:
-        return "unplugged"
-    if "live" in t:
-        return "live"
-    if "instrumental" in t:
-        return "instrumental"
-    if "video edit" in t:
-        return "edit"
-    if "edit" in t:
-        return "edit"
-    if "remix" in t:
-        return "remix"
-    return "standard"
-
-
 def build_missing_tracks(unmatched):
     grouped = {}
 
     for row in unmatched:
         artist = (_field(row, "artist", "") or "").strip()
-        title = _history_title(row)
-        album_hint = (_field(row, "album", "") or "").strip()
-        play_count = int(_field(row, "play_count", 1) or 1)
-        first_seen = (_field(row, "timestamp", "") or "").strip()
-        last_seen = (_field(row, "timestamp", "") or "").strip()
-
-        if not artist and not title:
-            continue
-        if not title:
-            continue
+        title = (_field(row, "title", "") or "").strip()
+        album = (_field(row, "album", "") or "").strip()
+        played_at = _field(row, "played_at", "")
 
         key = (artist.lower(), title.lower())
 
@@ -71,36 +24,33 @@ def build_missing_tracks(unmatched):
             grouped[key] = {
                 "artist": artist,
                 "title": title,
-                "album_hint": album_hint,
+                "album_hint": album,
                 "play_count": 0,
-                "priority": 0.0,
-                "first_seen": first_seen,
-                "last_seen": last_seen,
-                "variant_type": _variant_type(title),
+                "first_seen": played_at or "",
+                "last_seen": played_at or "",
             }
 
-        grouped[key]["play_count"] += play_count
+        grouped[key]["play_count"] += 1
 
-        if first_seen:
-            if not grouped[key]["first_seen"] or first_seen < grouped[key]["first_seen"]:
-                grouped[key]["first_seen"] = first_seen
-
-        if last_seen:
-            if not grouped[key]["last_seen"] or last_seen > grouped[key]["last_seen"]:
-                grouped[key]["last_seen"] = last_seen
+        if played_at:
+            if not grouped[key]["first_seen"] or played_at < grouped[key]["first_seen"]:
+                grouped[key]["first_seen"] = played_at
+            if not grouped[key]["last_seen"] or played_at > grouped[key]["last_seen"]:
+                grouped[key]["last_seen"] = played_at
 
     rows = []
     for item in grouped.values():
-        item["priority"] = float(item["play_count"])
+        play_count = item["play_count"]
+        priority = float(play_count)
+
         rows.append({
             "artist": item["artist"],
             "title": item["title"],
             "album_hint": item["album_hint"],
-            "play_count": item["play_count"],
-            "priority": item["priority"],
+            "play_count": play_count,
+            "priority": round(priority, 2),
             "first_seen": item["first_seen"],
             "last_seen": item["last_seen"],
-            "variant_type": item["variant_type"],
             "search_query": f'{item["artist"]} - {item["title"]}'.strip(" -"),
         })
 
@@ -164,7 +114,6 @@ def write_missing_queue(unmatched, output_dir):
                 "priority",
                 "first_seen",
                 "last_seen",
-                "variant_type",
                 "search_query",
             ],
         )
@@ -187,7 +136,7 @@ def write_missing_queue(unmatched, output_dir):
 
     return {
         "missing_tracks_csv": str(tracks_csv),
-        "missing_artists_albums_csv": str(summary_csv),
+        "missing_summary_csv": str(summary_csv),
         "missing_tracks_count": len(missing_tracks),
         "missing_artist_album_groups": len(missing_summary),
     }
