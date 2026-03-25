@@ -1,0 +1,163 @@
+===== HOST FILES =====
+/srv/docker/music-assistant
+total 84
+drwxrwxr-x  8 evgen evgen  4096 Mar 24 23:40 .
+drwxr-xr-x 29 evgen evgen  4096 Mar 23 00:41 ..
+drwxr-xr-x  5 evgen evgen  4096 Mar 24 23:34 app
+drwxr-xr-x  3 evgen evgen  4096 Mar 20 01:23 {app,tests,data
+-rw-r--r--  1 evgen evgen   600 Mar 20 02:03 compose.yaml
+-rw-rw-r--  1 evgen evgen  1245 Mar 24 00:20 compose.yml
+drwxr-xr-x  5 evgen evgen  4096 Mar 23 23:46 data
+-rw-rw-r--  1 evgen evgen    51 Mar 24 23:40 debug_container_codepath.txt
+-rw-rw-r--  1 evgen evgen 16304 Mar 24 23:32 debug_matcher_report.txt
+drwxrwxr-x  2 evgen evgen  4096 Mar 24 23:30 debug_snapshots
+-rw-r--r--  1 evgen evgen   887 Mar 20 01:31 Dockerfile
+-rw-rw-r--  1 evgen evgen   245 Mar 23 23:51 Makefile
+-rw-r--r--  1 evgen evgen  8410 Mar 20 01:33 README.md
+-rw-r--r--  1 evgen evgen   633 Mar 24 00:04 requirements.txt
+drwxrwxr-x  2 evgen evgen  4096 Mar 24 23:17 scripts
+drwxr-xr-x  3 evgen evgen  4096 Mar 20 01:39 tests
+
+total 104
+drwxr-xr-x 5 evgen evgen 4096 Mar 24 23:34 .
+drwxrwxr-x 8 evgen evgen 4096 Mar 24 23:40 ..
+-rw-rw-r-- 1 evgen evgen 7048 Mar 24 23:36 baseline_match_probe.py
+-rw-r--r-- 1 evgen evgen 5788 Mar 20 01:31 cli.py
+drwxrwxr-x 2 evgen evgen 4096 Mar 24 00:03 config
+-rw-r--r-- 1 evgen evgen 1219 Mar 20 01:24 config.py
+drwxrwxr-x 3 evgen evgen 4096 Mar 24 00:04 db
+-rw-rw-r-- 1 evgen evgen 2800 Mar 24 23:32 debug_matcher_probe.py
+-rw-r--r-- 1 evgen evgen 6080 Mar 20 01:24 ingest.py
+-rw-r--r-- 1 evgen evgen   43 Mar 24 23:37 __init__.py
+-rw-r--r-- 1 evgen evgen 3546 Mar 24 00:34 library_scan.py
+-rw-r--r-- 1 evgen evgen  405 Mar 20 01:24 logging_setup.py
+-rw-r--r-- 1 evgen evgen 5926 Mar 24 00:42 match_engine.py
+-rw-rw-r-- 1 evgen evgen 4499 Mar 24 23:17 missing_queue.py
+-rw-rw-r-- 1 evgen evgen  746 Mar 24 23:19 missing_queue_runner.py
+-rw-r--r-- 1 evgen evgen 1276 Mar 20 01:23 models.py
+-rw-r--r-- 1 evgen evgen 1626 Mar 20 01:24 normalize.py
+-rw-r--r-- 1 evgen evgen 7592 Mar 20 01:27 playlists.py
+drwxr-xr-x 2 evgen evgen 4096 Mar 20 01:41 __pycache__
+-rw-r--r-- 1 evgen evgen 3714 Mar 20 01:27 stats.py
+
+===== COMPOSE =====
+services:
+  music-assistant:
+    build: .
+    container_name: music-assistant
+    user: "1000:1000"
+    command: ["run-all"]
+    restart: "no"
+    environment:
+      INPUT_DIR: /data/input
+      LIBRARY_DIR: /data/library
+      OUTPUT_DIR: /data/output
+      LOG_LEVEL: INFO
+      MATCH_THRESHOLD: "0.6"
+      PLAYLIST_SIZE: "30"
+      REDISCOVERY_DAYS: "90"
+    volumes:
+      - /srv/docker/music-assistant/data/input:/data/input:ro
+      - /storage/media/music:/data/library:ro
+      - /srv/docker/music-assistant/data/output:/data/output
+      - /srv/docker/music-assistant/data/state:/data/state
+
+  music-assistant-init:
+    build: .
+    container_name: music-assistant-init
+    user: "1000:1000"
+    entrypoint: [""]
+    command: ["python", "-m", "app.db.init_db"]
+    restart: "no"
+    environment:
+      INPUT_DIR: /data/input
+      LIBRARY_DIR: /data/library
+      OUTPUT_DIR: /data/output
+      LOG_LEVEL: INFO
+      MATCH_THRESHOLD: "0.6"
+      PLAYLIST_SIZE: "30"
+      REDISCOVERY_DAYS: "90"
+    volumes:
+      - /srv/docker/music-assistant/data/input:/data/input:ro
+      - /storage/media/music:/data/library:ro
+      - /srv/docker/music-assistant/data/output:/data/output
+      - /srv/docker/music-assistant/data/state:/data/state
+
+===== DOCKERFILE(S) =====
+./Dockerfile
+
+----- ./Dockerfile -----
+FROM python:3.12-slim
+
+LABEL maintainer="house-bot homelab"
+LABEL description="Local music assistant — history to playlists"
+
+# Non-root user for safety
+RUN groupadd -r muser && useradd -r -g muser -d /app -s /sbin/nologin muser
+
+WORKDIR /app
+
+# Install Python deps first (layer cached unless requirements change)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY app/ ./app/
+
+# Stub data directories — real data comes from volume mounts at runtime.
+# Pre-creating them here ensures the container starts cleanly in smoke tests
+# even without mounts, and avoids permission surprises.
+RUN mkdir -p /data/input /data/library /data/output/playlists \
+    && chown -R muser:muser /data /app
+
+USER muser
+
+# Default: show help. Override with a subcommand in compose or docker run.
+ENTRYPOINT ["python", "-m", "app.cli"]
+CMD ["--help"]
+
+===== CONTAINER VIEW =====
+PWD:
+/app
+
+ROOT:
+total 16
+drwxr-xr-x 1 muser muser 4096 Mar 24 23:39 .
+drwxr-xr-x 1 root  root  4096 Mar 24 23:40 ..
+drwxr-xr-x 1 muser muser 4096 Mar 24 23:38 app
+-rw-r--r-- 1 muser muser  633 Mar 24 00:04 requirements.txt
+
+/app:
+total 16
+drwxr-xr-x 1 muser muser 4096 Mar 24 23:39 .
+drwxr-xr-x 1 root  root  4096 Mar 24 23:40 ..
+drwxr-xr-x 1 muser muser 4096 Mar 24 23:38 app
+-rw-r--r-- 1 muser muser  633 Mar 24 00:04 requirements.txt
+
+./app:
+total 104
+drwxr-xr-x 1 muser muser 4096 Mar 24 23:38 .
+drwxr-xr-x 1 muser muser 4096 Mar 24 23:39 ..
+-rw-r--r-- 1 muser muser   43 Mar 24 23:37 __init__.py
+drwxr-xr-x 1 muser muser 4096 Mar 20 01:41 __pycache__
+-rw-rw-r-- 1 muser muser 7048 Mar 24 23:36 baseline_match_probe.py
+-rw-r--r-- 1 muser muser 5788 Mar 20 01:31 cli.py
+drwxrwxr-x 1 muser muser 4096 Mar 24 00:24 config
+-rw-r--r-- 1 muser muser 1219 Mar 20 01:24 config.py
+drwxrwxr-x 1 muser muser 4096 Mar 24 00:04 db
+-rw-rw-r-- 1 muser muser 2800 Mar 24 23:32 debug_matcher_probe.py
+-rw-r--r-- 1 muser muser 6080 Mar 20 01:24 ingest.py
+-rw-r--r-- 1 muser muser 3546 Mar 24 00:34 library_scan.py
+-rw-r--r-- 1 muser muser  405 Mar 20 01:24 logging_setup.py
+-rw-r--r-- 1 muser muser 5926 Mar 24 00:42 match_engine.py
+-rw-rw-r-- 1 muser muser 4499 Mar 24 23:17 missing_queue.py
+-rw-rw-r-- 1 muser muser  746 Mar 24 23:19 missing_queue_runner.py
+-rw-r--r-- 1 muser muser 1276 Mar 20 01:23 models.py
+-rw-r--r-- 1 muser muser 1626 Mar 20 01:24 normalize.py
+-rw-r--r-- 1 muser muser 7592 Mar 20 01:27 playlists.py
+-rw-r--r-- 1 muser muser 3714 Mar 20 01:27 stats.py
+
+find baseline:
+/app/app/baseline_match_probe.py
+
+mounts:

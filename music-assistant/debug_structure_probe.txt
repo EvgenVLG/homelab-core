@@ -1,0 +1,304 @@
+===== DATE =====
+Tue Mar 24 11:42:34 PM UTC 2026
+
+===== INGEST SOURCE =====
+     1	"""
+     2	Read listening-history files from INPUT_DIR.
+     3	
+     4	Supported formats
+     5	-----------------
+     6	1. Google Takeout YouTube Music JSON (watch-history.json style)
+     7	2. Generic JSON array with keys: artist, track/title, album, timestamp, play_count
+     8	3. CSV with columns: artist, track/title, album, timestamp, play_count
+     9	
+    10	A file that fails to parse is logged and skipped — it never crashes the run.
+    11	"""
+    12	from __future__ import annotations
+    13	import csv
+    14	import json
+    15	import logging
+    16	import re
+    17	from pathlib import Path
+    18	
+    19	from .models import HistoryEntry
+    20	
+    21	logger = logging.getLogger(__name__)
+    22	
+    23	
+    24	# ── internal parsers ─────────────────────────────────────────────────────────
+    25	
+    26	def _parse_google_takeout(data: list[dict]) -> list[HistoryEntry]:
+    27	    """
+    28	    Google Takeout watch-history.json schema:
+    29	      [{
+    30	        "header": "YouTube Music",
+    31	        "title": "Watched <song title>",
+    32	        "subtitles": [{"name": "<artist>", "url": "..."}],
+    33	        "time": "2023-04-01T12:00:00.000Z"
+    34	      }]
+    35	    """
+    36	    entries: list[HistoryEntry] = []
+    37	    for item in data:
+    38	        if not isinstance(item, dict):
+    39	            continue
+    40	        raw_title: str = item.get("title", "")
+    41	        # Strip "Watched " / "Listened to " navigation prefixes
+    42	        track = re.sub(
+    43	            r"^(?:Watched|Listened to)\s+", "", raw_title, flags=re.IGNORECASE
+    44	        ).strip()
+    45	        subtitles = item.get("subtitles") or []
+    46	        artist = subtitles[0].get("name", "") if subtitles else ""
+    47	        timestamp = item.get("time", "")
+    48	        if not (artist or track):
+    49	            continue
+    50	        entries.append(
+    51	            HistoryEntry(
+    52	                source="google_takeout",
+    53	                artist=artist,
+    54	                track=track,
+    55	                timestamp=timestamp,
+    56	                raw_text=raw_title,
+    57	            )
+    58	        )
+    59	    return entries
+    60	
+    61	
+    62	def _parse_generic_json(data: list[dict]) -> list[HistoryEntry]:
+    63	    entries: list[HistoryEntry] = []
+    64	    for item in data:
+    65	        if not isinstance(item, dict):
+    66	            continue
+    67	        artist = str(item.get("artist") or item.get("Artist") or "").strip()
+    68	        track = str(
+    69	            item.get("track") or item.get("title") or
+    70	            item.get("Track") or item.get("Title") or ""
+    71	        ).strip()
+    72	        if not (artist or track):
+    73	            continue
+    74	        entries.append(
+    75	            HistoryEntry(
+    76	                source="json",
+    77	                artist=artist,
+    78	                track=track,
+    79	                album=str(item.get("album") or item.get("Album") or "").strip(),
+    80	                timestamp=str(item.get("timestamp") or item.get("time") or "").strip(),
+    81	                play_count=int(item.get("play_count") or item.get("plays") or 1),
+    82	                raw_text=json.dumps(item),
+    83	            )
+    84	        )
+    85	    return entries
+    86	
+    87	
+    88	def _parse_json_file(path: Path) -> list[HistoryEntry]:
+    89	    with open(path, encoding="utf-8") as fh:
+    90	        data = json.load(fh)
+    91	    if not isinstance(data, list):
+    92	        logger.warning(
+    93	            "%s: expected a JSON array, got %s — skipping",
+    94	            path.name, type(data).__name__,
+    95	        )
+    96	        return []
+    97	    # Google Takeout items always have a "header" key
+    98	    if data and isinstance(data[0], dict) and "header" in data[0]:
+    99	        return _parse_google_takeout(data)
+   100	    return _parse_generic_json(data)
+   101	
+   102	
+   103	def _parse_csv(path: Path) -> list[HistoryEntry]:
+   104	    entries: list[HistoryEntry] = []
+   105	    with open(path, newline="", encoding="utf-8-sig") as fh:
+   106	        reader = csv.DictReader(fh)
+   107	        for row in reader:
+   108	            artist = (
+   109	                row.get("artist") or row.get("Artist") or row.get("ARTIST") or ""
+   110	            ).strip()
+   111	            track = (
+   112	                row.get("track") or row.get("Track") or row.get("TRACK") or
+   113	                row.get("title") or row.get("Title") or ""
+   114	            ).strip()
+   115	            if not (artist or track):
+   116	                continue
+   117	            try:
+   118	                play_count = int(
+   119	                    row.get("play_count") or row.get("plays") or row.get("count") or 1
+   120	                )
+   121	            except (ValueError, TypeError):
+   122	                play_count = 1
+   123	            entries.append(
+   124	                HistoryEntry(
+   125	                    source="csv",
+   126	                    artist=artist,
+   127	                    track=track,
+   128	                    album=(row.get("album") or row.get("Album") or "").strip(),
+   129	                    timestamp=(
+   130	                        row.get("timestamp") or row.get("time") or row.get("date") or ""
+   131	                    ).strip(),
+   132	                    play_count=play_count,
+   133	                    raw_text=str(row),
+   134	                )
+   135	            )
+   136	    return entries
+   137	
+   138	
+   139	# ── public API ────────────────────────────────────────────────────────────────
+   140	
+   141	def ingest(input_dir: str) -> list[HistoryEntry]:
+   142	    """Read all supported files in input_dir and return combined history."""
+   143	    entries: list[HistoryEntry] = []
+   144	    base = Path(input_dir)
+   145	
+   146	    if not base.exists():
+   147	        logger.error("Input directory does not exist: %s", input_dir)
+   148	        return entries
+   149	
+   150	    files = sorted(f for f in base.iterdir() if f.is_file())
+   151	    if not files:
+   152	        logger.warning("Input directory is empty: %s", input_dir)
+   153	        return entries
+   154	
+   155	    for fp in files:
+   156	        suffix = fp.suffix.lower()
+   157	        try:
+   158	            if suffix == ".json":
+   159	                batch = _parse_json_file(fp)
+   160	            elif suffix == ".csv":
+   161	                batch = _parse_csv(fp)
+   162	            else:
+   163	                logger.debug("Skipping unsupported file type: %s", fp.name)
+   164	                continue
+   165	            logger.info("Ingested %d entries from %s", len(batch), fp.name)
+   166	            entries.extend(batch)
+   167	        except Exception as exc:
+   168	            logger.warning("Failed to parse %s: %s — skipping", fp.name, exc)
+   169	
+   170	    logger.info("Total history entries loaded: %d", len(entries))
+   171	    return entries
+
+===== LIBRARY SOURCE =====
+     1	import logging
+     2	import re
+     3	from pathlib import Path
+     4	
+     5	log = logging.getLogger(__name__)
+     6	
+     7	AUDIO_EXTENSIONS_DEFAULT = (".mp3", ".flac", ".m4a", ".aac", ".ogg", ".wav")
+     8	
+     9	
+    10	def _normalize_whitespace(text: str) -> str:
+    11	    return re.sub(r"\s+", " ", (text or "")).strip()
+    12	
+    13	
+    14	def _strip_extension(name: str) -> str:
+    15	    return Path(name).stem
+    16	
+    17	
+    18	def _clean_artist(text: str) -> str:
+    19	    text = (text or "").replace("_", " ").strip()
+    20	    return _normalize_whitespace(text)
+    21	
+    22	
+    23	def _clean_title(raw_title: str, artist: str | None = None, album: str | None = None) -> str:
+    24	    """
+    25	    Clean ugly filename-derived titles such as:
+    26	      01 - Song
+    27	      03. Song
+    28	      Artist - Album - 03 - Song
+    29	      Artist - 01 - Song
+    30	      Album - 07 - Song
+    31	    """
+    32	    text = _strip_extension(raw_title)
+    33	    text = text.replace("_", " ").strip()
+    34	
+    35	    # Repeatedly remove leading numeric prefixes
+    36	    for _ in range(3):
+    37	        new_text = re.sub(r"^\s*\d{1,2}\s*[-._)\]]\s*", "", text)
+    38	        if new_text == text:
+    39	            new_text = re.sub(r"^\s*\d{1,2}\s+", "", text)
+    40	        if new_text == text:
+    41	            break
+    42	        text = new_text.strip()
+    43	
+    44	    parts = [p.strip() for p in re.split(r"\s+-\s+", text) if p.strip()]
+    45	
+    46	    artist_l = (artist or "").strip().lower()
+    47	    album_l = (album or "").strip().lower()
+    48	
+    49	    changed = True
+    50	    while changed and len(parts) > 1:
+    51	        changed = False
+    52	        head = parts[0].lower()
+    53	
+    54	        if artist_l and head == artist_l:
+    55	            parts.pop(0)
+    56	            changed = True
+    57	            continue
+    58	
+    59	        if album_l and head == album_l:
+    60	            parts.pop(0)
+    61	            changed = True
+    62	            continue
+    63	
+    64	        if re.fullmatch(r"\d{1,2}", head):
+    65	            parts.pop(0)
+    66	            changed = True
+    67	            continue
+    68	
+    69	        if re.fullmatch(r"(cd|disc)\s*\d+", head):
+    70	            parts.pop(0)
+    71	            changed = True
+    72	            continue
+    73	
+    74	    if parts and re.fullmatch(r"\d{1,2}", parts[0]):
+    75	        parts.pop(0)
+    76	
+    77	    text = " - ".join(parts) if parts else text
+    78	
+    79	    text = re.sub(r"\s*\[(official|lyrics?|audio|video|hd|hq)\]\s*$", "", text, flags=re.I)
+    80	    text = re.sub(r"\s*\((official|lyrics?|audio|video|hd|hq)\)\s*$", "", text, flags=re.I)
+    81	
+    82	    return _normalize_whitespace(text)
+    83	
+    84	
+    85	def _derive_track_fields(path: Path) -> tuple[str | None, str]:
+    86	    stem = path.stem.replace("_", " ").strip()
+    87	    parts = [p.strip() for p in re.split(r"\s+-\s+", stem) if p.strip()]
+    88	
+    89	    if len(parts) == 2:
+    90	        return parts[0], parts[1]
+    91	
+    92	    return None, stem
+    93	
+    94	
+    95	def scan_library(library_dir, audio_extensions=AUDIO_EXTENSIONS_DEFAULT):
+    96	    tracks = []
+    97	    exts = {ext.lower() for ext in audio_extensions}
+    98	
+    99	    for path in Path(library_dir).rglob("*"):
+   100	        if not path.is_file():
+   101	            continue
+   102	        if path.suffix.lower() not in exts:
+   103	            continue
+   104	
+   105	        # Minimal metadata placeholders.
+   106	        # If later you add real tag parsing, keep the same fallback flow.
+   107	        tag_artist = None
+   108	        tag_title = None
+   109	        tag_album = None
+   110	
+   111	        file_artist, file_title = _derive_track_fields(path)
+   112	
+   113	        artist = tag_artist or file_artist or path.parent.name
+   114	        raw_title = tag_title or file_title or path.stem
+   115	        clean_title = _clean_title(raw_title, artist=artist, album=tag_album)
+   116	
+   117	        tracks.append({
+   118	            "path": str(path),
+   119	            "artist": _clean_artist(artist or ""),
+   120	            "title": clean_title,
+   121	            "album": tag_album or "",
+   122	        })
+   123	
+   124	    log.info("Library scan complete: %s tracks found in %s", len(tracks), library_dir)
+   125	    return tracks
+
+===== STRUCTURE PROBE =====
