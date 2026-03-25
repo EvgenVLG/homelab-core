@@ -102,3 +102,28 @@ secrets/
 /storage/backups/
 *.tar.gz
 *.log
+
+# runtime/state
+**/data/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/querylog.json
+**/cache/
+
+# music assistant local artifacts
+music-assistant/data/input/
+music-assistant/data/output/
+music-assistant/downloader/cache/
+
+# local downloads/media
+/storage/
+downloads/
+
+# python junk
+__pycache__/
+*.pyc
+*.bak_*
+
+# env
+.env
