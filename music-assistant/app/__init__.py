@@ -1,1 +1,0 @@
-"""music-assistant application package."""
