@@ -1,5 +1,8 @@
 # HomeLab Platform
 
+> **October 2026:** active engineering continues in the private lab. See the [current engineering snapshot](docs/OCTOBER_2026_ENGINEERING_SNAPSHOT.md) for Linux operations, networking, automation, observability, and recovery work that is intentionally separated from private runtime state.
+
+
 This repository is a monorepo for a self-hosted homelab system.
 
 ## Structure
