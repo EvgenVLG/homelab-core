@@ -1,5 +1,7 @@
 # HomeLab Platform
 
+> [Engineering portfolio map](https://github.com/EvgenVLG/test-rep) - quick recruiter-facing index of the public projects and what each one demonstrates.
+
 > **October 2026:** active engineering continues in the private lab. See the [current engineering snapshot](docs/OCTOBER_2026_ENGINEERING_SNAPSHOT.md) for Linux operations, networking, automation, observability, and recovery work that is intentionally separated from private runtime state.
 
 
